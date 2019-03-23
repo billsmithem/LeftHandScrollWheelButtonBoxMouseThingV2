@@ -10,19 +10,21 @@
 // #define	DEBUGGING
 // #define DEBUG_MODES
 //#define DEBUG_ENCODER
-//#define DEBUG_BUTTONS
+#define DEBUG_BUTTONS
 // #define DEBUG_BLINK
 
+// Arduino pin definitions
 #define ENCODER_CLOCK		2		// Rotary encoder clock
 #define ENCODER_DATA		A0		// Rotary encoder data 
 #define ENCODER_SWITCH 		A1		// rotary encoder switch
 #define LEFT_SWITCH			5		// left mouse button
 #define	RIGHT_SWITCH		6		// right mouse button
-#define SIX_SWITCH			7		// pin for mouse button 5
+#define THUMB_SWITCH		7		// pin for thumb switch
 
 #define EXTERN_LED			16		// external LED
 
-#define	MOUSE_SIX			(1<<5)	// six button
+// keys
+#define	THUMB_KEY			KEY_LEFT_CTRL	// thumb key value
 
 // #define DEBOUNCE_TIME		100		// delay 100 milliseconds for switch transitions
 #define DEBOUNCE_TIME		20		// delay 20 milliseconds for switch transitions
@@ -79,14 +81,16 @@ class Button {
 		String buttonName;
 		int state;
 		int clickVal;
+		bool isButton;
 
 	// constructor
 	public:
-		Button(int pinNum, String name, int click ) {
+		Button(int pinNum, String name, int click, bool buttonMode = true ) {
 			pin = pinNum;
 			state = HIGH;
 			buttonName = name;
 			clickVal = click;
+			isButton = buttonMode;
 			pinMode(pin, INPUT_PULLUP);
 		}
 
@@ -109,14 +113,26 @@ class Button {
 							#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
 							Serial.println(" down");
 							#endif
-							Mouse.press(clickVal);
-							// lowAction(clickVal);
+							if (isButton)
+								Mouse.press(clickVal);
+							else {
+								#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
+								Serial.println(" key pressed");
+								#endif
+								Keyboard.press(clickVal);
+							}
 						} else {
 							#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
 							Serial.println(" up");
 							#endif
-							Mouse.release(clickVal);
-							// highAction(clickval);
+							if (isButton)
+								Mouse.release(clickVal);
+							else {
+								#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
+								Serial.println(" key released");
+								#endif
+								Keyboard.release(clickVal);
+							}
 						}
 					}
 				}
@@ -128,7 +144,7 @@ class Button {
 Button midButton(ENCODER_SWITCH, "middle button", MOUSE_MIDDLE);
 Button leftButton(LEFT_SWITCH, "left button", MOUSE_LEFT);
 Button rightButton(RIGHT_SWITCH, "right button", MOUSE_RIGHT);
-Button sixButton(SIX_SWITCH, "six button", MOUSE_SIX);
+Button thumbButton(THUMB_SWITCH, "thumb button", THUMB_KEY, false);		// sends keyboard modifier
 
 //------------------------------------- encoder -------------------------------
 int encoderCount = 0;
@@ -188,7 +204,7 @@ void updateButtons() {
 	leftButton.Update();
 	rightButton.Update();
 	midButton.Update();
-	sixButton.Update();
+	thumbButton.Update();
 }
 
 void toggleSetup() {
