@@ -24,8 +24,6 @@
 
 #define	MOUSE_SIX			(1<<5)	// six button
 
-//#define	LED 				13		// power led pin
-
 // #define DEBOUNCE_TIME		100		// delay 100 milliseconds for switch transitions
 #define DEBOUNCE_TIME		20		// delay 20 milliseconds for switch transitions
 
@@ -141,14 +139,14 @@ void encoderInterrupt() {
 	stateChanged = true;
 	if (digitalRead(ENCODER_DATA) == HIGH) {
 		if (clockWise)
-			encoderCount++;
-		else
 			encoderCount--;
+		else
+			encoderCount++;
 	} else {
 		if (clockWise)
-			encoderCount--;
-		else
 			encoderCount++;
+		else
+			encoderCount--;
 	}
 }
 
@@ -223,8 +221,10 @@ void setup() {
 
 	// configure pin for external LED
 	pinMode(EXTERN_LED, OUTPUT);
-	// and turn it on (testing)
-	externLed(LOW);
+	// and turn it off (testing)
+	externLed(HIGH);
+
+	blink(4, LED_PULSETIME);
 }
 
 //-----------------------------------------------------------------------------
