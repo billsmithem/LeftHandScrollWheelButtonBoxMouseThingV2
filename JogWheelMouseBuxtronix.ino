@@ -2,10 +2,12 @@
 	Modified to support multiple modes of operation
 		- Buttons + Mouse wheel
 		- Buttons + Left & Right arrow keys (useful for video editing)
+	Modified to use buxtronix rotary encoder library
 */
 
 #include <Keyboard.h>
 #include <Mouse.h>
+#include "Rotary.h"
 
 // #define	DEBUGGING
 // #define DEBUG_MODES
@@ -15,7 +17,7 @@
 
 // Arduino pin definitions
 #define ENCODER_CLOCK		2		// Rotary encoder clock
-#define ENCODER_DATA		A0		// Rotary encoder data 
+#define ENCODER_DATA		3		// Rotary encoder data 
 #define ENCODER_SWITCH 		A1		// rotary encoder switch
 #define LEFT_SWITCH			5		// left mouse button
 #define	RIGHT_SWITCH		6		// right mouse button
@@ -147,22 +149,27 @@ Button rightButton(RIGHT_SWITCH, "right button", MOUSE_RIGHT);
 Button thumbButton(THUMB_SWITCH, "thumb button", THUMB_KEY, false);		// sends keyboard modifier
 
 //------------------------------------- encoder -------------------------------
+// Create rotary encoder
+Rotary rotary = Rotary(ENCODER_CLOCK, ENCODER_DATA);
+
 int encoderCount = 0;
 bool stateChanged = false;
-bool clockWise = true;		// which way do we spin the mouse wheel
 
-void encoderInterrupt() {
-	stateChanged = true;
-	if (digitalRead(ENCODER_DATA) == HIGH) {
-		if (clockWise)
-			encoderCount--;
-		else
-			encoderCount++;
-	} else {
-		if (clockWise)
-			encoderCount++;
-		else
-			encoderCount--;
+// rotate is called anytime the rotary inputs change state.
+void rotate() {
+	unsigned char result = rotary.process();
+	if (result == DIR_CW) {
+		encoderCount++;
+		stateChanged = true;
+		#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
+		Serial.println(encoderCount);
+		#endif
+	} else if (result == DIR_CCW) {
+		encoderCount--;
+		stateChanged = true;
+		#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
+		Serial.println(encoderCount);
+		#endif
 	}
 }
 
@@ -226,11 +233,11 @@ void toggleSetup() {
 
 //------------------------------------- start ---------------------------------
 void setup() {
-	// use falling edge because capacitor on input will cause a slow rising edge
-	attachInterrupt(digitalPinToInterrupt(ENCODER_CLOCK), encoderInterrupt, FALLING);
+	attachInterrupt(digitalPinToInterrupt(ENCODER_CLOCK), rotate, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(ENCODER_DATA), rotate, CHANGE);
 	Mouse.begin();
 	Keyboard.begin();
-	Serial.begin(9600);
+	Serial.begin(115200);
 
 	// enable use of built-in LED
 	pinMode(LED_BUILTIN, OUTPUT);
