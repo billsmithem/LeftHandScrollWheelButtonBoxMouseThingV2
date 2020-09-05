@@ -3,6 +3,7 @@
 		- Buttons + Mouse wheel
 		- Buttons + Left & Right arrow keys (useful for video editing)
 	Modified to use buxtronix rotary encoder library
+	Added debugging switch - reset while holding down thumb button
 */
 
 #include <Keyboard.h>
@@ -34,6 +35,8 @@
 #define LED_PULSETIME		250
 #define DEADTIME			1000	// delay between LED pulse streams
 
+bool debug_mode = false;			// start in normal mode unless thumb button pressed during startup
+
 /*
 	Setup mode
 		Toggle setup mode by holding down buttons 1 & 2, then pressing button 3
@@ -50,16 +53,12 @@ void nextMode() {
 	switch (mode) {
 		case mouse:
 			mode = arrows;
-			#if defined(DEBUGGING) && defined(DEBUG_MODES)
 			Serial.println("mode == ARROWS");
-			#endif
 			break;
 		case arrows:
 		default:		// something is broken, switch back to mouse
 			mode = mouse;
-			#if defined(DEBUGGING) && defined(DEBUG_MODES)
 			Serial.println("mode == MOUSE");
-			#endif
 			break;
 	}
 }
@@ -107,32 +106,27 @@ class Button {
 				buttonState = digitalRead(pin);
 				if (buttonState != state) {		// if really changed
 					state = buttonState;
-					#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
-					Serial.print(buttonName);
-					#endif
+					if (debug_mode)
+						Serial.print(buttonName);
 					if (!setupMode) {
 						if (state == LOW) {
-							#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
-							Serial.println(" down");
-							#endif
+							if (debug_mode)
+								Serial.println(" down");
 							if (isButton)
 								Mouse.press(clickVal);
 							else {
-								#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
-								Serial.println(" key pressed");
-								#endif
+								if (debug_mode)
+									Serial.println(" key pressed");
 								Keyboard.press(clickVal);
 							}
 						} else {
-							#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
-							Serial.println(" up");
-							#endif
+							if (debug_mode)
+								Serial.println(" up");
 							if (isButton)
 								Mouse.release(clickVal);
 							else {
-								#if defined(DEBUGGING) && defined(DEBUG_BUTTONS)
-								Serial.println(" key released");
-								#endif
+								if (debug_mode)
+									Serial.println(" key released");
 								Keyboard.release(clickVal);
 							}
 						}
@@ -161,23 +155,22 @@ void rotate() {
 	if (result == DIR_CW) {
 		encoderCount++;
 		stateChanged = true;
-		#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
-		Serial.println(encoderCount);
-		#endif
+		if (debug_mode)
+			Serial.println(encoderCount);
 	} else if (result == DIR_CCW) {
 		encoderCount--;
 		stateChanged = true;
-		#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
-		Serial.println(encoderCount);
-		#endif
+		if (debug_mode)
+			Serial.println(encoderCount);
 	}
 }
 
 void checkEncoder() {
 	if (stateChanged) {
-		#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
-		Serial.print("encoder count = "); Serial.println(encoderCount);
-		#endif
+		if (debug_mode) {
+			Serial.print("encoder count = ");
+			Serial.println(encoderCount);
+		}
 		if (setupMode) {
 			// switch to next mode
 			nextMode();
@@ -189,14 +182,12 @@ void checkEncoder() {
 				case arrows:
 					if (encoderCount > 0) {
 						Keyboard.write(KEY_LEFT_ARROW);
-						#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
-						Serial.println("LEFT ARROW");
-						#endif
+						if (debug_mode)
+							Serial.println("LEFT ARROW");
 					} else {
 						Keyboard.write(KEY_RIGHT_ARROW);
-						#if defined(DEBUGGING) && defined(DEBUG_ENCODER)
-						Serial.println("RIGHT ARROW");
-						#endif
+						if (debug_mode)
+							Serial.println("RIGHT ARROW");
 					}
 					break;
 			}
@@ -223,12 +214,21 @@ void toggleSetup() {
 			Mouse.release(MOUSE_LEFT);		// release the buttons so computer isn't locked up
 			Mouse.release(MOUSE_RIGHT);
 			Mouse.release(MOUSE_MIDDLE);
+			Serial.println("Setup Mode On");
+			print_filename();
 		}
 	} else {
 		if (midButton.State() == LOW) {
 			setupMode = false;
+			Serial.println("Setup Mode Off");
 		}
 	}
+}
+
+// print last part of source file path
+void print_filename() {
+	char *sptr = strrchr(__FILE__, '/');
+	Serial.println(++sptr);
 }
 
 //------------------------------------- start ---------------------------------
@@ -247,7 +247,24 @@ void setup() {
 	// and turn it off (testing)
 	externLed(HIGH);
 
+	if (digitalRead(THUMB_SWITCH) == LOW) {
+		debug_mode = true;
+	}
+
 	blink(4, LED_PULSETIME);
+
+	// wait a max of 4 seconds for serial port to init
+	for (int count = 0; count++; count < 8) {
+		if (Serial)
+			break;
+		delay(500);			// wait 1/2 sec
+	}
+
+	// enable debug?
+	if (debug_mode) {
+		print_filename(); 		// identify source file
+		Serial.println("Debug mode enabled");
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -274,12 +291,19 @@ void blink(int count, int blinkTime) {
 void doBlink() {
 	if (running) {
 		if (endTime < millis()) {				// has delay elapsed?
-			#if defined(DEBUGGING) && defined(DEBUG_BLINK)
-			Serial.print("ledOn = "); Serial.println(ledOn);
+			#if defined(DEBUG_BLINK)
+			if (debug_mode) {
+				Serial.print("ledOn = ");
+				Serial.println(ledOn);
+			}
 			#endif
 			if (ledOn) {						// toggle LED
-				#if defined(DEBUGGING) && defined(DEBUG_BLINK)
-				Serial.print("blinkCount = "); Serial.print(blinkCount); Serial.println(" turning off LED");
+				#if defined(DEBUG_BLINK)
+				if (debug_mode) {
+					Serial.print("blinkCount = ");
+					Serial.print(blinkCount);
+					Serial.println(" turning off LED");
+				}
 				#endif
 				// digitalWrite(LED_BUILTIN, LOW);	// turn off
 				externLed(HIGH);
@@ -294,8 +318,12 @@ void doBlink() {
 					running = false;
 				}
 			} else {
-				#if defined(DEBUGGING) && defined(DEBUG_BLINK)
-				Serial.print("blinkCount = "); Serial.print(blinkCount); Serial.println(" turning on LED");
+				#if defined(DEBUG_BLINK)
+				if (debug_mode) {
+					Serial.print("blinkCount = ");
+					Serial.print(blinkCount);
+					Serial.println(" turning on LED");
+				}
 				#endif
 				// digitalWrite(LED_BUILTIN, HIGH);
 				externLed(LOW);
