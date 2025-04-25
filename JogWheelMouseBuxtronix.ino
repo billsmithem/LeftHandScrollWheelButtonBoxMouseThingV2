@@ -6,11 +6,11 @@
 	Added debugging switch - reset while holding down thumb button
 */
 
+#include <Arduino.h>
 #include <Keyboard.h>
 #include <Mouse.h>
 #include "Rotary.h"
-
-const char* GIT_COMMIT_HASH = "d63b51d";	// placeholder, will be updated by script
+#include "version.h"
 
 // #define	DEBUGGING
 // #define DEBUG_MODES
@@ -239,10 +239,15 @@ void setup() {
 	attachInterrupt(digitalPinToInterrupt(ENCODER_DATA), rotate, CHANGE);
 	Mouse.begin();
 	Keyboard.begin();
-	Serial.begin(115200);
-
-	Serial.println(__FILE__);	// print source file name
-	Serial.println
+	while (!Serial) {
+		yield();
+	}
+	Serial.print("Commit Hash: ");
+	Serial.println(GIT_COMMIT_HASH);
+	Serial.print("Build Date: ");
+	Serial.println(BUILD_DATE);
+	Serial.println(SOURCE_FILE_NAME);	// print source file name
+	Serial.println();
 
 	// enable use of built-in LED
 	pinMode(LED_BUILTIN, OUTPUT);
