@@ -10,6 +10,8 @@
 #include <Mouse.h>
 #include "Rotary.h"
 
+const char* GIT_COMMIT_HASH = "d63b51d";	// placeholder, will be updated by script
+
 // #define	DEBUGGING
 // #define DEBUG_MODES
 //#define DEBUG_ENCODER
@@ -238,6 +240,9 @@ void setup() {
 	Mouse.begin();
 	Keyboard.begin();
 	Serial.begin(115200);
+
+	Serial.println(__FILE__);	// print source file name
+	Serial.println
 
 	// enable use of built-in LED
 	pinMode(LED_BUILTIN, OUTPUT);
